@@ -419,4 +419,15 @@ config ARCH_ZYNQMP
 	help
 	  This enables support for Xilinx ZynqMP Family
 
+config MACH_SONY_PDX223
+        bool "Sony Mobile PDX-223"
+        depends on ARCH_WAIPIO
+        help
+          This enables support for Sony Mobile PDX-223 Family
+config MACH_SONY_PDX224
+        bool "Sony Mobile PDX-224"
+        depends on ARCH_WAIPIO
+        help
+          This enables support for Sony Mobile PDX-224 Family
+
 endmenu
