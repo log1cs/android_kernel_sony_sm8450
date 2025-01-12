@@ -418,6 +418,7 @@ struct tzdbg_stat {
 	size_t display_offset;
 	char *name;
 	char *data;
+	bool avail;
 };
 
 struct tzdbg {
@@ -1613,6 +1614,8 @@ static int  tzdbg_fs_init(struct platform_device *pdev)
 
 	for (i = 0; i < TZDBG_STATS_MAX; i++) {
 		tzdbg.debug_tz[i] = i;
+		if (!tzdbg.stat[i].avail)
+			continue;
 		dent = proc_create_data(tzdbg.stat[i].name,
 				0444, dent_dir,
 				&tzdbg_fops, &tzdbg.debug_tz[i]);
@@ -1803,7 +1806,14 @@ static int tz_log_probe(struct platform_device *pdev)
 	void __iomem *virt_iobase;
 	phys_addr_t tzdiag_phy_iobase;
 	uint32_t *ptr = NULL;
-	int ret = 0;
+	int ret = 0, i;
+
+	/*
+	 * By default all nodes will be created.
+	 * Mark avail as false later selectively if there's need to skip proc node creation.
+	 */
+	for (i = 0; i < TZDBG_STATS_MAX; i++)
+		tzdbg.stat[i].avail = true;
 
 	ret = tzdbg_get_tz_version();
 	if (ret)
@@ -1899,8 +1909,10 @@ static int tz_log_probe(struct platform_device *pdev)
 
 	/* Init for tme log */
 	ret = tzdbg_init_tme_log(pdev, virt_iobase);
-	if (ret < 0)
+	if (ret < 0) {
+		tzdbg.stat[TZDBG_TME_LOG].avail = false;
 		pr_warn("Tme log initialization failed!\n");
+	}
 
 	/* register unencrypted qsee log buffer */
 	ret = tzdbg_register_qsee_log_buf(pdev);
