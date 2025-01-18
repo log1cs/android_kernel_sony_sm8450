@@ -424,4 +424,15 @@ config MACH_SONY_DEVICE
 	help
 	  This enables support for Sony Device Family
 
+config MACH_SONY_PDX223
+        bool "Sony Mobile PDX-223"
+        depends on ARCH_WAIPIO
+        help
+          This enables support for Sony Mobile PDX-223 Family
+
+config MACH_SONY_PDX224
+        bool "Sony Mobile PDX-224"
+        depends on ARCH_WAIPIO
+        help
+          This enables support for Sony Mobile PDX-224 Family
 endmenu
