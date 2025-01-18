@@ -136,6 +136,8 @@
 #define GEN7_CP_BV_CHICKEN_DBG           0xada
 
 /* LPAC registers */
+#define GEN7_CP_LPAC_RB_BASE             0xb00
+#define GEN7_CP_LPAC_RB_BASE_HI          0xb01
 #define GEN7_CP_LPAC_RB_RPTR             0xb06
 #define GEN7_CP_LPAC_RB_WPTR             0xb07
 #define GEN7_CP_LPAC_PROTECT_CNTL        0xb09
