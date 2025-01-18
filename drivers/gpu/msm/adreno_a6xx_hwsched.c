@@ -395,7 +395,7 @@ static int a6xx_hwsched_gmu_first_boot(struct adreno_device *adreno_dev)
 
 	device->gmu_fault = false;
 
-	trace_kgsl_pwr_set_state(device, KGSL_STATE_AWARE);
+	kgsl_pwrctrl_set_state(device, KGSL_STATE_AWARE);
 
 	return 0;
 
@@ -464,7 +464,7 @@ static int a6xx_hwsched_gmu_boot(struct adreno_device *adreno_dev)
 
 	device->gmu_fault = false;
 
-	trace_kgsl_pwr_set_state(device, KGSL_STATE_AWARE);
+	kgsl_pwrctrl_set_state(device, KGSL_STATE_AWARE);
 
 	return 0;
 err:
@@ -529,7 +529,7 @@ static int a6xx_hwsched_notify_slumber(struct adreno_device *adreno_dev)
 	/* Disable the power counter so that the GMU is not busy */
 	gmu_core_regwrite(device, A6XX_GMU_CX_GMU_POWER_COUNTER_ENABLE, 0);
 
-	return a6xx_hfi_send_cmd_async(adreno_dev, &req);
+	return a6xx_hfi_send_cmd_async(adreno_dev, &req, sizeof(req));
 
 }
 static int a6xx_hwsched_gmu_power_off(struct adreno_device *adreno_dev)
@@ -700,7 +700,7 @@ static void a6xx_hwsched_touch_wakeup(struct adreno_device *adreno_dev)
 	device->pwrctrl.last_stat_updated = ktime_get();
 	device->state = KGSL_STATE_ACTIVE;
 
-	trace_kgsl_pwr_set_state(device, KGSL_STATE_ACTIVE);
+	kgsl_pwrctrl_set_state(device, KGSL_STATE_ACTIVE);
 
 done:
 	/*
@@ -743,7 +743,7 @@ static int a6xx_hwsched_boot(struct adreno_device *adreno_dev)
 	device->pwrctrl.last_stat_updated = ktime_get();
 	device->state = KGSL_STATE_ACTIVE;
 
-	trace_kgsl_pwr_set_state(device, KGSL_STATE_ACTIVE);
+	kgsl_pwrctrl_set_state(device, KGSL_STATE_ACTIVE);
 
 	return ret;
 }
@@ -820,7 +820,7 @@ static int a6xx_hwsched_first_boot(struct adreno_device *adreno_dev)
 	device->pwrctrl.last_stat_updated = ktime_get();
 	device->state = KGSL_STATE_ACTIVE;
 
-	trace_kgsl_pwr_set_state(device, KGSL_STATE_ACTIVE);
+	kgsl_pwrctrl_set_state(device, KGSL_STATE_ACTIVE);
 
 	return 0;
 }
@@ -1000,7 +1000,7 @@ static int a6xx_hwsched_dcvs_set(struct adreno_device *adreno_dev,
 	if (ret)
 		return ret;
 
-	ret = a6xx_hfi_send_cmd_async(adreno_dev, &req);
+	ret = a6xx_hfi_send_cmd_async(adreno_dev, &req, sizeof(req));
 
 	if (ret) {
 		dev_err_ratelimited(&gmu->pdev->dev,
@@ -1124,7 +1124,7 @@ static int a6xx_hwsched_pm_suspend(struct adreno_device *adreno_dev)
 
 	set_bit(GMU_PRIV_PM_SUSPEND, &gmu->flags);
 
-	trace_kgsl_pwr_set_state(device, KGSL_STATE_SUSPEND);
+	kgsl_pwrctrl_set_state(device, KGSL_STATE_SUSPEND);
 
 	return 0;
 
