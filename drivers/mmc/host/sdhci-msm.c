@@ -30,8 +30,10 @@
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
 #include "../core/core.h"
+#include "../core/card.h"
 #include <linux/crypto-qti-common.h>
 #include <linux/qtee_shmbridge.h>
+#include <trace/hooks/mmc_core.h>
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
 #include "sdhci-msm-scaling.h"
@@ -4937,6 +4939,27 @@ static void sdhci_msm_set_rumi_bus_mode(struct sdhci_host *host)
 	}
 }
 
+static void sdhci_msm_gpio_irqt(void *unused, struct mmc_host *host, bool *allow)
+{
+        host->android_oem_data1 = 0;
+}
+
+static void sdhci_msm_get_cd(void *unused, struct sdhci_host *host, bool *allow)
+{
+        if (host->mmc && host->mmc->android_oem_data1)
+                *allow = false;
+}
+
+static void sdhci_msm_remove_card(void *unused, struct mmc_card *card)
+{
+        if (mmc_card_sd(card)) {
+                pr_info("%s: Removing card\n", mmc_hostname(card->host));
+                mmc_card_set_removed(card);
+                card->host->android_oem_data1 = 1;
+                mmc_detect_change(card->host, msecs_to_jiffies(200));
+        }
+}
+
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
@@ -5203,6 +5226,32 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	pm_runtime_mark_last_busy(&pdev->dev);
 	pm_runtime_put_autosuspend(&pdev->dev);
 
+	ret = register_trace_android_vh_mmc_blk_mq_rw_recovery(
+			sdhci_msm_remove_card, NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register vendor hook (%d)\n", ret);
+		goto exit_vh;
+	}
+
+	ret = register_trace_android_vh_sdhci_get_cd(
+			sdhci_msm_get_cd, NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register vendor hook (%d)\n", ret);
+		unregister_trace_android_vh_mmc_blk_mq_rw_recovery(
+                        sdhci_msm_remove_card, NULL);
+		goto exit_vh;
+	}
+
+	ret = register_trace_android_vh_mmc_gpio_cd_irqt(
+			sdhci_msm_gpio_irqt, NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register recovery hook (%d)\n", ret);
+		unregister_trace_android_vh_mmc_blk_mq_rw_recovery(
+                        sdhci_msm_remove_card, NULL);
+		unregister_trace_android_vh_sdhci_get_cd(
+                        sdhci_msm_get_cd, NULL);
+	}
+
 	msm_host->sdhci_msm_pm_notifier.notifier_call
 		= sdhci_msm_hibernation_notifier;
 	ret = register_pm_notifier(&msm_host->sdhci_msm_pm_notifier);
@@ -5212,6 +5261,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		goto pm_runtime_disable;
 	}
 
+exit_vh:
 	return 0;
 
 pm_runtime_disable:
@@ -5247,6 +5297,13 @@ static int sdhci_msm_remove(struct platform_device *pdev)
 	int i;
 	int dead = (readl_relaxed(host->ioaddr + SDHCI_INT_STATUS) ==
 		    0xffffffff);
+
+	unregister_trace_android_vh_mmc_blk_mq_rw_recovery(
+                        sdhci_msm_remove_card, NULL);
+	unregister_trace_android_vh_sdhci_get_cd(
+                        sdhci_msm_get_cd, NULL);
+	unregister_trace_android_vh_mmc_gpio_cd_irqt(
+                        sdhci_msm_gpio_irqt, NULL);
 
 	unregister_pm_notifier(&msm_host->sdhci_msm_pm_notifier);
 
