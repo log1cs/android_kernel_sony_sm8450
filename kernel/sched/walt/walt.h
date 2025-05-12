@@ -118,8 +118,6 @@ struct walt_rq {
 	int			curr_top;
 	bool			notif_pending;
 	bool			high_irqload;
-	u64			last_cc_update;
-	u64			cycles;
 	int			num_mvp_tasks;
 	struct list_head	mvp_tasks;
 };
@@ -259,7 +257,9 @@ static inline u64 irq_time_read(int cpu) { return 0; }
 #define WINDOW_STATS_MAX		1
 #define WINDOW_STATS_MAX_RECENT_AVG	2
 #define WINDOW_STATS_AVG		3
-#define WINDOW_STATS_INVALID_POLICY	4
+#define WINDOW_STATS_WMA		4
+#define WINDOW_STATS_EWMA		5
+#define WINDOW_STATS_INVALID_POLICY	6
 
 extern unsigned int __read_mostly sysctl_sched_coloc_downmigrate_ns;
 extern unsigned int __read_mostly sysctl_sched_group_downmigrate_pct;
@@ -910,6 +910,66 @@ struct compute_energy_output {
 	unsigned int	cluster_first_cpu[MAX_CLUSTERS];
 };
 
+struct cluster_freq_relation {
+	int src_freq_scale;
+	int dst_cpu;
+	int tgt_freq_scale;
+};
+
+extern struct cluster_freq_relation cluster_arr[3][5];
+extern int sched_ignore_cluster_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *lenp, loff_t *ppos);
+//Check to confirm if we can ignore cluster for p
+static inline bool ignore_cluster_valid(struct task_struct *p, struct rq *rq)
+{
+	cpumask_t tmp;
+	int i;
+	struct walt_rq *wrq = (struct walt_rq *)rq->android_vendor_data1;
+	int cluster = wrq->cluster->id;
+	int src_cpu = cpumask_first(&wrq->cluster->cpus);
+	int src_freq_scale = arch_scale_freq_capacity(src_cpu);
+	int tgt_scale, tgt_cpu;
+
+
+	/* if src cluster has no relationship */
+	if (cluster_arr[cluster][0].src_freq_scale <= 0)
+		return false;
+
+	/* if src cluster is below its threshold frequency */
+	if (src_freq_scale < cluster_arr[cluster][0].src_freq_scale)
+		return false;
+
+	/* if p is only affine to src cluster */
+	if (p) {
+		cpumask_andnot(&tmp, cpu_active_mask, &wrq->cluster->cpus);
+		if (!cpumask_intersects(&tmp, &p->cpus_mask))
+			return false;
+	}
+
+	for (i = 0; i < 5; i++)
+		if (cluster_arr[cluster][i].src_freq_scale > src_freq_scale)
+			break;
+	tgt_cpu = cpumask_first(&sched_cluster[cluster_arr[cluster][i - 1].dst_cpu]->cpus);
+	tgt_scale = cluster_arr[cluster][i - 1].tgt_freq_scale;
+
+	/*
+	 * In case target cluster is frequency limited to a frequency below target
+	 * scale then skip ignoring src cluster.
+	 */
+	if (capacity_orig_of(tgt_cpu) < tgt_scale)
+		return false;
+
+	/* Target cluster is above target scale */
+	if (arch_scale_freq_capacity(tgt_cpu) >= tgt_scale)
+		return false;
+
+	/* We reach here, means we need to ignore src cluster for placement */
+	return true;
+}
+
+
+
+extern u64 walt_get_prev_group_run_sum(struct rq *rq);
 extern void walt_task_dump(struct task_struct *p);
 extern void walt_rq_dump(int cpu);
 extern void walt_dump(void);

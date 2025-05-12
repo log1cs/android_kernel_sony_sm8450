@@ -13,6 +13,7 @@ static unsigned int one_hundred_thousand = 100000;
 static unsigned int two_hundred_million = 200000000;
 static int __maybe_unused two = 2;
 static int __maybe_unused four = 4;
+static int __maybe_unused six = 6;
 static int one_hundred = 100;
 static int one_thousand = 1000;
 
@@ -42,6 +43,7 @@ unsigned int sysctl_sched_wake_up_idle[2];
 unsigned int sysctl_input_boost_ms;
 unsigned int sysctl_input_boost_freq[8];
 unsigned int sysctl_sched_boost_on_input;
+int sysctl_cluster_arr[3][15];
 
 /* sysctl nodes accesed by other files */
 unsigned int __read_mostly sysctl_sched_coloc_downmigrate_ns;
@@ -68,6 +70,7 @@ unsigned int sysctl_sched_skip_sp_newly_idle_lb = 1;
 unsigned int sysctl_sched_hyst_min_coloc_ns = 80000000;
 unsigned int sysctl_sched_asymcap_boost;
 
+struct cluster_freq_relation cluster_arr[3][5];
 /* range is [1 .. INT_MAX] */
 static int sysctl_task_read_pid = 1;
 
@@ -483,7 +486,7 @@ struct ctl_table walt_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= SYSCTL_ZERO,
-		.extra2		= &four,
+		.extra2		= &six,
 	},
 	{
 		.procname	= "sched_group_upmigrate",
@@ -869,6 +872,33 @@ struct ctl_table walt_table[] = {
 		.extra1		= SYSCTL_ZERO,
 		.extra2		= SYSCTL_ONE,
 	},
+	{
+		.procname	= "cluster0_rel",
+		.data		= sysctl_cluster_arr[0],
+		.maxlen		= sizeof(int) * 15,
+		.mode		= 0644,
+		.proc_handler	= sched_ignore_cluster_handler,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_INT_MAX,
+	},
+	{
+		.procname	= "cluster1_rel",
+		.data		= sysctl_cluster_arr[1],
+		.maxlen		= sizeof(int) * 15,
+		.mode		= 0644,
+		.proc_handler	= sched_ignore_cluster_handler,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_INT_MAX,
+	},
+	{
+		.procname	= "cluster2_rel",
+		.data		= sysctl_cluster_arr[2],
+		.maxlen		= sizeof(int) * 15,
+		.mode		= 0644,
+		.proc_handler	= sched_ignore_cluster_handler,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_INT_MAX,
+	},
 	{ }
 };
 
@@ -898,7 +928,7 @@ void walt_tunables(void)
 
 	sysctl_sched_task_unfilter_period = 100000000;
 
-	sysctl_sched_window_stats_policy = WINDOW_STATS_MAX_RECENT_AVG;
+	sysctl_sched_window_stats_policy = WINDOW_STATS_EWMA;
 
 	sysctl_sched_ravg_window_nr_ticks = (HZ / NR_WINDOWS_PER_SEC);
 

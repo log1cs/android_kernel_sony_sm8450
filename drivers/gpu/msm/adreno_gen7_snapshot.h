@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __ADRENO_GEN7_SNAPSHOT_H
 #define __ADRENO_GEN7_SNAPSHOT_H
@@ -413,7 +413,7 @@ static const u32 gen7_0_0_pre_crashdumper_registers[] = {
 static_assert(IS_ALIGNED(sizeof(gen7_0_0_pre_crashdumper_registers), 8));
 
 static const u32 gen7_0_0_post_crashdumper_registers[] = {
-	0x00535, 0x00535,
+	0x00535, 0x00535, 0x0f400, 0x0f400, 0x0f800, 0x0f803, 0x0fc00, 0x0fc01,
 	UINT_MAX, UINT_MAX,
 };
 static_assert(IS_ALIGNED(sizeof(gen7_0_0_post_crashdumper_registers), 8));
@@ -519,7 +519,6 @@ static const u32 gen7_6_0_gpu_registers[] = {
 	0x0ed52, 0x0ed52, 0x0ed66, 0x0ed68, 0x0ed6b, 0x0ed6d, 0x0ed6f, 0x0ed6f,
 	0x0ed80, 0x0ed81, 0x0ed85, 0x0ed85, 0x0ed87, 0x0ed87, 0x0ed8a, 0x0ed8a,
 	0x0ed92, 0x0ed92, 0x0eda6, 0x0eda8, 0x0edab, 0x0edad, 0x0edaf, 0x0edaf,
-	0x0f400, 0x0f400, 0x0f800, 0x0f803, 0x0fc00, 0x0fc01,
 	UINT_MAX, UINT_MAX,
 };
 static_assert(IS_ALIGNED(sizeof(gen7_6_0_gpu_registers), 8));
@@ -1947,11 +1946,7 @@ struct gen7_shader_block {
 };
 
 static struct gen7_shader_block gen7_0_0_shader_blocks[] = {
-	{TP0_TMO_DATA,               0x200, 4, 2, PIPE_BR, USPTP},
-	{TP0_SMO_DATA,               0x80, 4, 2, PIPE_BR, USPTP},
-	{TP0_MIPMAP_BASE_DATA,       0x3c0, 4, 2, PIPE_BR, USPTP},
-	{SP_INST_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
-	{SP_INST_DATA_1,             0x800, 4, 2, PIPE_BR, USPTP},
+	{HLSQ_CPS_MISC_RAM_1,        0x200, 1, 1, PIPE_BR, HLSQ_State},
 	{SP_LB_0_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
 	{SP_LB_1_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
 	{SP_LB_2_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
@@ -1960,6 +1955,11 @@ static struct gen7_shader_block gen7_0_0_shader_blocks[] = {
 	{SP_LB_5_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
 	{SP_LB_6_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
 	{SP_LB_7_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
+	{TP0_TMO_DATA,               0x200, 4, 2, PIPE_BR, USPTP},
+	{TP0_SMO_DATA,               0x80, 4, 2, PIPE_BR, USPTP},
+	{TP0_MIPMAP_BASE_DATA,       0x3c0, 4, 2, PIPE_BR, USPTP},
+	{SP_INST_DATA,               0x800, 4, 2, PIPE_BR, USPTP},
+	{SP_INST_DATA_1,             0x800, 4, 2, PIPE_BR, USPTP},
 	{SP_CB_RAM,                  0x390, 4, 2, PIPE_BR, USPTP,},
 	{SP_INST_TAG,                0x90, 4, 2, PIPE_BR, USPTP},
 	{SP_INST_DATA_2,             0x200, 4, 2, PIPE_BR, USPTP},
@@ -1995,7 +1995,6 @@ static struct gen7_shader_block gen7_0_0_shader_blocks[] = {
 	{HLSQ_CVS_MISC_RAM,          0x280, 1, 1, PIPE_BV, HLSQ_State},
 	{HLSQ_CPS_MISC_RAM,          0x800, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_CPS_MISC_RAM,          0x800, 1, 1, PIPE_LPAC, HLSQ_State},
-	{HLSQ_CPS_MISC_RAM_1,        0x200, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_INST_RAM,              0x800, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_INST_RAM,              0x800, 1, 1, PIPE_BV, HLSQ_State},
 	{HLSQ_INST_RAM,              0x800, 1, 1, PIPE_LPAC, HLSQ_State},
@@ -2029,17 +2028,18 @@ static struct gen7_shader_block gen7_0_0_shader_blocks[] = {
 };
 
 static struct gen7_shader_block gen7_3_0_shader_blocks[] = {
-	{TP0_TMO_DATA,               0x200, 1, 2, PIPE_BR, USPTP},
-	{TP0_SMO_DATA,               0x80, 1, 2, PIPE_BR, USPTP},
-	{TP0_MIPMAP_BASE_DATA,       0x3c0, 1, 2, PIPE_BR, USPTP},
-	{SP_INST_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
-	{SP_INST_DATA_1,             0x800, 1, 2, PIPE_BR, USPTP},
+	{HLSQ_CPS_MISC_RAM_1,        0x200, 1, 1, PIPE_BR, HLSQ_State},
 	{SP_LB_0_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
 	{SP_LB_1_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
 	{SP_LB_2_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
 	{SP_LB_3_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
 	{SP_LB_4_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
 	{SP_LB_5_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
+	{TP0_TMO_DATA,               0x200, 1, 2, PIPE_BR, USPTP},
+	{TP0_SMO_DATA,               0x80, 1, 2, PIPE_BR, USPTP},
+	{TP0_MIPMAP_BASE_DATA,       0x3c0, 1, 2, PIPE_BR, USPTP},
+	{SP_INST_DATA,               0x800, 1, 2, PIPE_BR, USPTP},
+	{SP_INST_DATA_1,             0x800, 1, 2, PIPE_BR, USPTP},
 	{SP_CB_RAM,                  0x390, 1, 2, PIPE_BR, USPTP,},
 	{SP_INST_TAG,                0x90, 1, 2, PIPE_BR, USPTP},
 	{SP_TMO_TAG,                 0x80, 1, 2, PIPE_BR, USPTP},
@@ -2059,7 +2059,6 @@ static struct gen7_shader_block gen7_3_0_shader_blocks[] = {
 	{HLSQ_ICB_CPS_CB_BASE_TAG,   0x10, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_CVS_MISC_RAM,          0x280, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_CPS_MISC_RAM,          0x800, 1, 1, PIPE_BR, HLSQ_State},
-	{HLSQ_CPS_MISC_RAM_1,        0x200, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_INST_RAM,              0x800, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_GFX_CVS_CONST_RAM,     0x800, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_GFX_CPS_CONST_RAM,     0x800, 1, 1, PIPE_BR, HLSQ_State},
@@ -2078,11 +2077,7 @@ static struct gen7_shader_block gen7_3_0_shader_blocks[] = {
 };
 
 static struct gen7_shader_block gen7_6_0_shader_blocks[] = {
-	{TP0_TMO_DATA,                 0x200, 6, 2, PIPE_BR, USPTP},
-	{TP0_SMO_DATA,                 0x80, 6, 2, PIPE_BR, USPTP},
-	{TP0_MIPMAP_BASE_DATA,         0x3c0, 6, 2, PIPE_BR, USPTP},
-	{SP_INST_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
-	{SP_INST_DATA_1,                0x800, 6, 2, PIPE_BR, USPTP},
+	{HLSQ_CPS_MISC_RAM_1,          0x1c0, 1, 1, PIPE_BR, HLSQ_State},
 	{SP_LB_0_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
 	{SP_LB_1_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
 	{SP_LB_2_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
@@ -2091,6 +2086,11 @@ static struct gen7_shader_block gen7_6_0_shader_blocks[] = {
 	{SP_LB_5_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
 	{SP_LB_6_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
 	{SP_LB_7_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
+	{TP0_TMO_DATA,                 0x200, 6, 2, PIPE_BR, USPTP},
+	{TP0_SMO_DATA,                 0x80, 6, 2, PIPE_BR, USPTP},
+	{TP0_MIPMAP_BASE_DATA,         0x3c0, 6, 2, PIPE_BR, USPTP},
+	{SP_INST_DATA,                 0x800, 6, 2, PIPE_BR, USPTP},
+	{SP_INST_DATA_1,                0x800, 6, 2, PIPE_BR, USPTP},
 	{SP_CB_RAM,                    0x390, 6, 2, PIPE_BR, USPTP},
 	{SP_LB_13_DATA,                0x800, 6, 2, PIPE_BR, USPTP},
 	{SP_LB_14_DATA,                0x800, 6, 2, PIPE_BR, USPTP},
@@ -2124,7 +2124,6 @@ static struct gen7_shader_block gen7_6_0_shader_blocks[] = {
 	{HLSQ_CVS_MISC_RAM,            0x280, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_CVS_MISC_RAM,            0x280, 1, 1, PIPE_BV, HLSQ_State},
 	{HLSQ_CPS_MISC_RAM,            0x800, 1, 1, PIPE_BR, HLSQ_State},
-	{HLSQ_CPS_MISC_RAM_1,          0x1c0, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_INST_RAM,                0x800, 1, 1, PIPE_BR, HLSQ_State},
 	{HLSQ_INST_RAM,                0x800, 1, 1, PIPE_BV, HLSQ_State},
 	{HLSQ_CVS_MISC_RAM_TAG,        0x10, 1, 1, PIPE_BR, HLSQ_State},

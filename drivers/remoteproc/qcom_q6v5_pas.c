@@ -46,6 +46,8 @@ static int scm_pas_bw_count;
 static DEFINE_MUTEX(scm_pas_bw_mutex);
 bool timeout_disabled;
 
+#define to_rproc(d) container_of(d, struct rproc, dev)
+
 struct adsp_data {
 	int crash_reason_smem;
 	const char *firmware_name;
@@ -141,8 +143,14 @@ void adsp_segment_dump(struct rproc *rproc, struct rproc_dump_segment *segment,
 static void adsp_minidump(struct rproc *rproc)
 {
 	struct qcom_adsp *adsp = rproc->priv;
+	struct qcom_q6v5 *q6v5 = &adsp->q6v5;
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_minidump", "enter");
+
+	if (q6v5->data_ready) {
+		sysfs_notify(&rproc->dev.parent->kobj, NULL, "crash_reason");
+	}
+	dev_info(q6v5->dev, "adsp_minidump sys-notify\n");
 
 	if (rproc->dump_conf == RPROC_COREDUMP_DISABLED)
 		goto exit;
@@ -307,7 +315,7 @@ static void disable_regulators(struct qcom_adsp *adsp)
 {
 	int i;
 
-	for (i = 0; i < adsp->reg_cnt; i++) {
+	for (i = (adsp->reg_cnt - 1); i >= 0; i--) {
 		regulator_set_voltage(adsp->regs[i].reg, 0, INT_MAX);
 		regulator_set_load(adsp->regs[i].reg, 0);
 		regulator_disable(adsp->regs[i].reg);
@@ -499,12 +507,42 @@ static unsigned long adsp_panic(struct rproc *rproc)
 	return qcom_q6v5_panic(&adsp->q6v5);
 }
 
+static ssize_t crash_reason_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct qcom_adsp *adsp = (struct qcom_adsp *)platform_get_drvdata(pdev);
+	int r = 0;
+	struct qcom_q6v5 *q6v5 = &adsp->q6v5;
+
+	r = snprintf(buf, PAGE_SIZE, "%s\n", q6v5->crash_reason_buf);
+	q6v5->data_ready = 0;
+	memset(q6v5->crash_reason_buf, 0, sizeof(q6v5->crash_reason_buf));
+
+	return r;
+}
+
+static DEVICE_ATTR_RO(crash_reason);
+
+void adsp_coredump(struct rproc *rproc)
+{
+	struct qcom_adsp *adsp = (struct qcom_adsp *)rproc->priv;
+	struct qcom_q6v5 *q6v5 = &adsp->q6v5;
+
+	if (q6v5->data_ready) {
+		sysfs_notify(&rproc->dev.parent->kobj, NULL, "crash_reason");
+	}
+	dev_err(q6v5->dev, "adsp_coredump sys-notify\n");
+	rproc_coredump(rproc);
+}
+
 static const struct rproc_ops adsp_ops = {
 	.start = adsp_start,
 	.stop = adsp_stop,
 	.da_to_va = adsp_da_to_va,
 	.load = adsp_load,
 	.panic = adsp_panic,
+	.coredump = adsp_coredump,
 };
 
 static const struct rproc_ops adsp_minidump_ops = {
@@ -679,6 +717,7 @@ static int adsp_alloc_memory_region(struct qcom_adsp *adsp)
 	}
 
 	ret = of_address_to_resource(node, 0, &r);
+	of_node_put(node);
 	if (ret)
 		return ret;
 
@@ -749,6 +788,8 @@ static int adsp_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "unable to allocate remoteproc\n");
 		return -ENOMEM;
 	}
+
+	sysfs_create_file(&pdev->dev.kobj, &dev_attr_crash_reason.attr);
 
 	rproc->recovery_disabled = true;
 	rproc->auto_boot = desc->auto_boot;
@@ -821,7 +862,6 @@ static int adsp_probe(struct platform_device *pdev)
 	timeout_disabled = qcom_pil_timeouts_disabled();
 	qcom_add_glink_subdev(rproc, &adsp->glink_subdev, desc->ssr_name);
 	qcom_add_smd_subdev(rproc, &adsp->smd_subdev);
-	qcom_add_ssr_subdev(rproc, &adsp->ssr_subdev, desc->ssr_name);
 	adsp->sysmon = qcom_add_sysmon_subdev(rproc,
 					      desc->sysmon_name,
 					      desc->ssctl_id);
@@ -831,6 +871,7 @@ static int adsp_probe(struct platform_device *pdev)
 	}
 
 	qcom_sysmon_register_ssr_subdev(adsp->sysmon, &adsp->ssr_subdev.subdev);
+	qcom_add_ssr_subdev(rproc, &adsp->ssr_subdev, desc->ssr_name);
 	ret = device_create_file(adsp->dev, &dev_attr_txn_id);
 	if (ret)
 		goto remove_subdevs;
@@ -860,6 +901,7 @@ detach_active_pds:
 deinit_wakeup_source:
 	device_init_wakeup(adsp->dev, false);
 free_rproc:
+	device_init_wakeup(adsp->dev, false);
 	rproc_free(rproc);
 
 	return ret;
@@ -877,6 +919,7 @@ static int adsp_remove(struct platform_device *pdev)
 	qcom_remove_sysmon_subdev(adsp->sysmon);
 	qcom_remove_smd_subdev(adsp->rproc, &adsp->smd_subdev);
 	qcom_remove_ssr_subdev(adsp->rproc, &adsp->ssr_subdev);
+	adsp_pds_detach(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
 	device_init_wakeup(adsp->dev, false);
 	rproc_free(adsp->rproc);
 
@@ -1030,6 +1073,20 @@ static const struct adsp_data msm8998_adsp_resource = {
 		.ssr_name = "lpass",
 		.sysmon_name = "adsp",
 		.ssctl_id = 0x14,
+};
+
+static const struct adsp_data ravelin_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
 };
 
 static const struct adsp_data cdsp_resource_init = {
@@ -1249,6 +1306,22 @@ static const struct adsp_data parrot_mpss_resource = {
 	.dma_phys_below_32b = true,
 };
 
+static const struct adsp_data ravelin_mpss_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.pas_id = 4,
+	.free_after_auth_reset = true,
+	.minidump_id = 3,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.qmp_name = "modem",
+	.ssctl_id = 0x12,
+	.dma_phys_below_32b = true,
+};
+
 static const struct adsp_data slpi_resource_init = {
 		.crash_reason_smem = 424,
 		.firmware_name = "slpi.mdt",
@@ -1361,6 +1434,18 @@ static const struct adsp_data parrot_wpss_resource = {
 	.ssctl_id = 0x19,
 };
 
+static const struct adsp_data ravelin_wpss_resource = {
+	.crash_reason_smem = 626,
+	.firmware_name = "wpss.mdt",
+	.pas_id = 6,
+	.minidump_id = 4,
+	.uses_elf64 = true,
+	.ssr_name = "wpss",
+	.sysmon_name = "wpss",
+	.qmp_name = "wpss",
+	.ssctl_id = 0x19,
+};
+
 static const struct adsp_data neo_wpss_resource = {
 	.crash_reason_smem = 626,
 	.firmware_name = "wpss.mdt",
@@ -1412,6 +1497,9 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,neo-wpss-pas", .data = &neo_wpss_resource},
 	{ .compatible = "qcom,anorak-adsp-pas", .data = &anorak_adsp_resource},
 	{ .compatible = "qcom,anorak-cdsp-pas", .data = &anorak_cdsp_resource},
+	{ .compatible = "qcom,ravelin-adsp-pas", .data = &ravelin_adsp_resource},
+	{ .compatible = "qcom,ravelin-modem-pas", .data = &ravelin_mpss_resource},
+	{ .compatible = "qcom,ravelin-wpss-pas", .data = &ravelin_wpss_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);

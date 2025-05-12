@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _ADRENO_GEN7_H_
@@ -23,7 +23,7 @@ struct gen7_snapshot_block_list;
 extern const struct adreno_power_ops gen7_gmu_power_ops;
 extern const struct adreno_power_ops gen7_hwsched_power_ops;
 extern const struct adreno_perfcounters adreno_gen7_perfcounters;
-extern const struct adreno_perfcounters adreno_gen7_6_0_perfcounters;
+extern const struct adreno_perfcounters adreno_gen7_hwsched_perfcounters;
 
 struct gen7_gpudev {
 	struct adreno_gpudev base;
@@ -115,6 +115,10 @@ struct adreno_gen7_core {
 	u32 bcl_data;
 	/** @fast_bus_hint: Whether or not to increase IB vote on high ddr stall */
 	bool fast_bus_hint;
+	/** @qos_value: GPU qos value to set for each RB. */
+	const u32 *qos_value;
+	/** @rt_bus_hint: IB level hint for real time clients i.e. RB-0 */
+	const u32 rt_bus_hint;
 };
 
 /**
@@ -187,6 +191,9 @@ struct gen7_cp_smmu_info {
 
 /* Size of the CP_INIT pm4 stream in dwords */
 #define GEN7_CP_INIT_DWORDS 10
+
+/* Size of the perf counter enable pm4 stream in dwords */
+#define GEN7_PERF_COUNTER_ENABLE_DWORDS 3
 
 #define GEN7_INT_MASK \
 	((1 << GEN7_INT_AHBERROR) |			\
@@ -261,9 +268,21 @@ int gen7_preemption_context_init(struct kgsl_context *context);
 
 void gen7_preemption_context_destroy(struct kgsl_context *context);
 
+void gen7_preemption_prepare_postamble(struct adreno_device *adreno_dev);
+
 void gen7_snapshot(struct adreno_device *adreno_dev,
 		struct kgsl_snapshot *snapshot);
 void gen7_crashdump_init(struct adreno_device *adreno_dev);
+
+/**
+ * gen7_snapshot_external_core_regs - Dump external registers into snapshot
+ * @device: Pointer to KGSL device
+ * @snapshot: Pointer to the snapshot
+ *
+ * Dump external core registers like GPUCC, CPR into GPU snapshot.
+ */
+void gen7_snapshot_external_core_regs(struct kgsl_device *device,
+		struct kgsl_snapshot *snapshot);
 
 /**
  * gen7_read_alwayson - Read the current always on clock value

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2013-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef UFS_QCOM_H_
@@ -231,6 +231,12 @@ enum ufs_qcom_phy_init_type {
  * Enable this quirk to give it an additional 100us.
  */
 #define UFS_DEVICE_QUIRK_PA_HIBER8TIME          (1 << 15)
+
+/*
+ * Some ufs device vendors need a different TSync length.
+ * Enable this quirk to give an additional TX_HS_SYNC_LENGTH.
+ */
+#define UFS_DEVICE_QUIRK_PA_TX_HSG1_SYNC_LENGTH (1 << 16)
 
 static inline void
 ufs_qcom_get_controller_revision(struct ufs_hba *hba,
@@ -472,6 +478,11 @@ struct ufs_qcom_host {
 	u32 clk_next_mode;
 	u32 clk_curr_mode;
 	bool is_clk_scale_enabled;
+	atomic_t hi_pri_en;
+	atomic_t therm_mitigation;
+	cpumask_t perf_mask;
+	cpumask_t def_mask;
+	bool irq_affinity_support;
 };
 
 static inline u32
@@ -541,6 +552,7 @@ out:
  *  SCSI_IOCTL_GET_PCI
  */
 #define UFS_IOCTL_QUERY			0x5388
+#define UFS_IOCTL_WRITE_BUFFER		0x53EF
 
 /**
  * struct ufs_ioctl_query_data - used to transfer data to and from user via
@@ -617,4 +629,17 @@ static inline void ufs_qcom_ice_disable(struct ufs_qcom_host *host)
 #define ufs_qcom_ice_program_key NULL
 #endif /* !CONFIG_SCSI_UFS_CRYPTO */
 
+struct ufs_ioctl_write_buffer_data {
+	__u32 buf_size;
+	__u8 buffer[0];
+};
+
+enum ffu_status {
+	FFU_STATUS_NO_INFOMATION	= 0x00,
+	FFU_STATUS_SUCCESS		= 0x01,
+	FFU_STATUS_CORRUPTION_ERROR	= 0x02,
+	FFU_STATUS_INTERNAL_ERROR	= 0x03,
+	FFU_STATUS_VERSION_MISMATCH	= 0x04,
+	FFU_STATUS_GENERAL_ERROR	= 0xFF,
+};
 #endif /* UFS_QCOM_H_ */

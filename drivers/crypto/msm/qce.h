@@ -55,8 +55,8 @@
 #define QCE_BW_REQUEST_RESET_FIRST	4
 
 /* default average and peak bw for crypto device */
-#define CRYPTO_AVG_BW			100100
-#define CRYPTO_PEAK_BW			100100
+#define CRYPTO_AVG_BW			384
+#define CRYPTO_PEAK_BW			384
 
 typedef void (*qce_comp_func_ptr_t)(void *areq,
 		unsigned char *icv, unsigned char *iv, int ret);
@@ -216,4 +216,5 @@ void qce_get_crypto_status(void *handle, unsigned int *s1, unsigned int *s2,
 			   unsigned int *s3, unsigned int *s4,
 			   unsigned int *s5);
 int qce_manage_timeout(void *handle, int req_info);
+int qce_set_irqs(void *handle, bool enable);
 #endif /* __CRYPTO_MSM_QCE_H */

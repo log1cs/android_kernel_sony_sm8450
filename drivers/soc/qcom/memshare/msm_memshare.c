@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2013-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/err.h>
@@ -26,7 +27,6 @@
 static unsigned long(attrs);
 
 static struct qmi_handle *mem_share_svc_handle;
-static struct workqueue_struct *mem_share_svc_workqueue;
 static uint64_t bootup_request;
 static bool ramdump_event;
 static void *memshare_ramdump_dev[MAX_CLIENTS];
@@ -510,8 +510,12 @@ static void handle_alloc_generic_req(struct qmi_handle *handle,
 		return;
 	}
 
-	if (!memblock[index].allotted) {
-		if (memblock[index].guard_band && alloc_req->num_bytes > 0)
+	if (!memblock[index].allotted && alloc_req->num_bytes > 0) {
+
+		if (alloc_req->num_bytes > memblock[index].init_size)
+			alloc_req->num_bytes = memblock[index].init_size;
+
+		if (memblock[index].guard_band)
 			size = alloc_req->num_bytes + MEMSHARE_GUARD_BYTES;
 		else
 			size = alloc_req->num_bytes;
@@ -756,6 +760,7 @@ static struct qmi_msg_handler qmi_memshare_handlers[] = {
 		.decoded_size = sizeof(struct mem_query_size_req_msg_v01),
 		.fn = handle_query_size_req,
 	},
+	{}
 };
 
 int memshare_alloc(struct device *dev,
@@ -784,17 +789,10 @@ static void memshare_init_worker(struct work_struct *work)
 {
 	int rc;
 
-	mem_share_svc_workqueue =
-		create_singlethread_workqueue("mem_share_svc");
-	if (!mem_share_svc_workqueue)
-		return;
-
 	mem_share_svc_handle = kzalloc(sizeof(struct qmi_handle),
 					  GFP_KERNEL);
-	if (!mem_share_svc_handle) {
-		destroy_workqueue(mem_share_svc_workqueue);
+	if (!mem_share_svc_handle)
 		return;
-	}
 
 	rc = qmi_handle_init(mem_share_svc_handle,
 		sizeof(struct qmi_elem_info),
@@ -803,7 +801,7 @@ static void memshare_init_worker(struct work_struct *work)
 		dev_err(memsh_drv->dev,
 			"memshare: Creating mem_share_svc qmi handle failed\n");
 		kfree(mem_share_svc_handle);
-		destroy_workqueue(mem_share_svc_workqueue);
+		mem_share_svc_handle = NULL;
 		return;
 	}
 	rc = qmi_add_server(mem_share_svc_handle, MEM_SHARE_SERVICE_SVC_ID,
@@ -811,9 +809,11 @@ static void memshare_init_worker(struct work_struct *work)
 	if (rc < 0) {
 		dev_err(memsh_drv->dev,
 			"memshare: Registering mem share svc failed %d\n", rc);
-		qmi_handle_release(mem_share_svc_handle);
-		kfree(mem_share_svc_handle);
-		destroy_workqueue(mem_share_svc_workqueue);
+		if (mem_share_svc_handle) {
+			qmi_handle_release(mem_share_svc_handle);
+			kfree(mem_share_svc_handle);
+			mem_share_svc_handle = NULL;
+		}
 		return;
 	}
 	dev_dbg(memsh_drv->dev, "memshare: memshare_init successful\n");
@@ -994,10 +994,11 @@ static int memshare_remove(struct platform_device *pdev)
 	if (!memsh_drv)
 		return 0;
 
-	flush_workqueue(mem_share_svc_workqueue);
-	qmi_handle_release(mem_share_svc_handle);
-	kfree(mem_share_svc_handle);
-	destroy_workqueue(mem_share_svc_workqueue);
+	if (mem_share_svc_handle) {
+		qmi_handle_release(mem_share_svc_handle);
+		kfree(mem_share_svc_handle);
+		mem_share_svc_handle = NULL;
+	}
 	return 0;
 }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -1695,6 +1695,20 @@ static struct clk_regmap_div gcc_pcie_2_pipe_div_clk_src = {
 	},
 };
 
+static struct clk_regmap_div gcc_pwm0_xo512_div_clk_src = {
+	.reg = 0x43030,
+	.shift = 0,
+	.width = 9,
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "gcc_pwm0_xo512_div_clk_src",
+		.parent_data = &(const struct clk_parent_data){
+			.fw_name = "bi_tcxo",
+		},
+		.num_parents = 1,
+		.ops = &clk_regmap_div_ops,
+	},
+};
+
 static struct clk_regmap_div gcc_qupv3_wrap0_s4_div_clk_src = {
 	.reg = 0x27614,
 	.shift = 0,
@@ -1920,7 +1934,7 @@ static struct clk_branch gcc_ddrss_gpu_axi_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data){
 			.name = "gcc_ddrss_gpu_axi_clk",
-			.ops = &clk_branch2_aon_ops,
+			.ops = &clk_branch2_ops,
 		},
 	},
 };
@@ -1965,6 +1979,32 @@ static struct clk_branch gcc_disp_hf_axi_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data){
 			.name = "gcc_disp_hf_axi_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_edp_0_clkref_en = {
+	.halt_reg = 0x9c028,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x9c028,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_edp_0_clkref_en",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_edp_1_clkref_en = {
+	.halt_reg = 0x9c02c,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x9c02c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_edp_1_clkref_en",
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2232,6 +2272,201 @@ static struct clk_branch gcc_gpu_snoc_dvm_gfx_clk = {
 	},
 };
 
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_audio_tbu_clk = {
+	.halt_reg = 0x8d004,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d004,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_audio_tbu_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_pcie_tbu_clk = {
+	.halt_reg = 0x8d010,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d010,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_pcie_tbu_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_tbu1_clk = {
+	.halt_reg = 0x8d008,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d008,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_tbu1_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_aggre_noc_mmu_tbu2_clk = {
+	.halt_reg = 0x8d00c,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d00c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_aggre_noc_mmu_tbu2_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf0_clk = {
+	.halt_reg = 0x8d018,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d018,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf0_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf1_clk = {
+	.halt_reg = 0x8d01c,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d01c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf1_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf2_clk = {
+	.halt_reg = 0x8d070,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d070,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf2_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf3_clk = {
+	.halt_reg = 0x8d074,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d074,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf3_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf4_clk = {
+	.halt_reg = 0x8d080,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d080,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf4_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_hf5_clk = {
+	.halt_reg = 0x8d084,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d084,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_hf5_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_sf0_clk = {
+	.halt_reg = 0x8d014,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d014,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_sf0_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmnoc_mmu_tbu_sf1_clk = {
+	.halt_reg = 0x8d030,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d030,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmnoc_mmu_tbu_sf1_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_mmu_tcu_clk = {
+	.halt_reg = 0x8d02c,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d02c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_mmu_tcu_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_turing_mmu_tbu0_clk = {
+	.halt_reg = 0x8d020,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d020,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_turing_mmu_tbu0_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_hlos1_vote_turing_mmu_tbu1_clk = {
+	.halt_reg = 0x8d024,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x8d024,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_hlos1_vote_turing_mmu_tbu1_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
 static struct clk_branch gcc_pcie_0_aux_clk = {
 	.halt_reg = 0x7b034,
 	.halt_check = BRANCH_HALT_VOTED,
@@ -2329,7 +2564,7 @@ static struct clk_branch gcc_pcie_0_pipe_clk = {
 
 static struct clk_branch gcc_pcie_0_pipe_div2_clk = {
 	.halt_reg = 0x7b044,
-	.halt_check = BRANCH_HALT_VOTED,
+	.halt_check = BRANCH_HALT_SKIP,
 	.clkr = {
 		.enable_reg = 0x62010,
 		.enable_mask = BIT(15),
@@ -2470,7 +2705,7 @@ static struct clk_branch gcc_pcie_1_pipe_clk = {
 
 static struct clk_branch gcc_pcie_1_pipe_div2_clk = {
 	.halt_reg = 0xad040,
-	.halt_check = BRANCH_HALT_VOTED,
+	.halt_check = BRANCH_HALT_SKIP,
 	.clkr = {
 		.enable_reg = 0x62010,
 		.enable_mask = BIT(16),
@@ -2611,7 +2846,7 @@ static struct clk_branch gcc_pcie_2_phy_rchng_clk = {
 
 static struct clk_branch gcc_pcie_2_pipe_clk = {
 	.halt_reg = 0x9d040,
-	.halt_check = BRANCH_HALT_VOTED,
+	.halt_check = BRANCH_HALT_SKIP,
 	.clkr = {
 		.enable_reg = 0x62000,
 		.enable_mask = BIT(30),
@@ -2629,7 +2864,7 @@ static struct clk_branch gcc_pcie_2_pipe_clk = {
 
 static struct clk_branch gcc_pcie_2_pipe_div2_clk = {
 	.halt_reg = 0x9d048,
-	.halt_check = BRANCH_HALT_VOTED,
+	.halt_check = BRANCH_HALT_SKIP,
 	.clkr = {
 		.enable_reg = 0x62010,
 		.enable_mask = BIT(17),
@@ -2727,6 +2962,11 @@ static struct clk_branch gcc_pwm0_xo512_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data){
 			.name = "gcc_pwm0_xo512_clk",
+			.parent_hws = (const struct clk_hw*[]){
+				&gcc_pwm0_xo512_div_clk_src.clkr.hw
+			},
+			.flags = CLK_SET_RATE_PARENT,
+			.num_parents = 1,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3701,6 +3941,8 @@ static struct clk_regmap *gcc_anorak_clocks[] = {
 	[GCC_DDRSS_PCIE_SF_TBU_CLK] = &gcc_ddrss_pcie_sf_tbu_clk.clkr,
 	[GCC_DISP1_HF_AXI_CLK] = &gcc_disp1_hf_axi_clk.clkr,
 	[GCC_DISP_HF_AXI_CLK] = &gcc_disp_hf_axi_clk.clkr,
+	[GCC_EDP_0_CLKREF_EN] = &gcc_edp_0_clkref_en.clkr,
+	[GCC_EDP_1_CLKREF_EN] = &gcc_edp_1_clkref_en.clkr,
 	[GCC_GP10_CLK] = &gcc_gp10_clk.clkr,
 	[GCC_GP10_CLK_SRC] = &gcc_gp10_clk_src.clkr,
 	[GCC_GP10_DIV_CLK_SRC] = &gcc_gp10_div_clk_src.clkr,
@@ -3739,6 +3981,23 @@ static struct clk_regmap *gcc_anorak_clocks[] = {
 	[GCC_GPU_GPLL0_DIV_CLK_SRC] = &gcc_gpu_gpll0_div_clk_src.clkr,
 	[GCC_GPU_MEMNOC_GFX_CLK] = &gcc_gpu_memnoc_gfx_clk.clkr,
 	[GCC_GPU_SNOC_DVM_GFX_CLK] = &gcc_gpu_snoc_dvm_gfx_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_AUDIO_TBU_CLK] =
+		&gcc_hlos1_vote_aggre_noc_mmu_audio_tbu_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_PCIE_TBU_CLK] =
+		&gcc_hlos1_vote_aggre_noc_mmu_pcie_tbu_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_TBU1_CLK] = &gcc_hlos1_vote_aggre_noc_mmu_tbu1_clk.clkr,
+	[GCC_HLOS1_VOTE_AGGRE_NOC_MMU_TBU2_CLK] = &gcc_hlos1_vote_aggre_noc_mmu_tbu2_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF0_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf0_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF1_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf1_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF2_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf2_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF3_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf3_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF4_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf4_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_HF5_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_hf5_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_SF0_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_sf0_clk.clkr,
+	[GCC_HLOS1_VOTE_MMNOC_MMU_TBU_SF1_CLK] = &gcc_hlos1_vote_mmnoc_mmu_tbu_sf1_clk.clkr,
+	[GCC_HLOS1_VOTE_MMU_TCU_CLK] = &gcc_hlos1_vote_mmu_tcu_clk.clkr,
+	[GCC_HLOS1_VOTE_TURING_MMU_TBU0_CLK] = &gcc_hlos1_vote_turing_mmu_tbu0_clk.clkr,
+	[GCC_HLOS1_VOTE_TURING_MMU_TBU1_CLK] = &gcc_hlos1_vote_turing_mmu_tbu1_clk.clkr,
 	[GCC_PCIE_0_AUX_CLK] = &gcc_pcie_0_aux_clk.clkr,
 	[GCC_PCIE_0_AUX_CLK_SRC] = &gcc_pcie_0_aux_clk_src.clkr,
 	[GCC_PCIE_0_CFG_AHB_CLK] = &gcc_pcie_0_cfg_ahb_clk.clkr,
@@ -3785,6 +4044,7 @@ static struct clk_regmap *gcc_anorak_clocks[] = {
 	[GCC_PDM_AHB_CLK] = &gcc_pdm_ahb_clk.clkr,
 	[GCC_PDM_XO4_CLK] = &gcc_pdm_xo4_clk.clkr,
 	[GCC_PWM0_XO512_CLK] = &gcc_pwm0_xo512_clk.clkr,
+	[GCC_PWM0_XO512_DIV_CLK_SRC] = &gcc_pwm0_xo512_div_clk_src.clkr,
 	[GCC_QMIP_CAMERA_NRT_AHB_CLK] = &gcc_qmip_camera_nrt_ahb_clk.clkr,
 	[GCC_QMIP_CAMERA_RT_AHB_CLK] = &gcc_qmip_camera_rt_ahb_clk.clkr,
 	[GCC_QMIP_GPU_AHB_CLK] = &gcc_qmip_gpu_ahb_clk.clkr,
@@ -3938,7 +4198,7 @@ static const struct regmap_config gcc_anorak_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
-	.max_register = 0x1f1030,
+	.max_register = 0x1f41f0,
 	.fast_io = true,
 };
 

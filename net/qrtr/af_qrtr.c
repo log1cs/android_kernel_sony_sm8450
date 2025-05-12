@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015, Sony Mobile Communications Inc.
  * Copyright (c) 2013, 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/kthread.h>
 #include <linux/module.h>
@@ -33,6 +33,8 @@
 /* auto-bind range */
 #define QRTR_MIN_EPH_SOCKET 0x4000
 #define QRTR_MAX_EPH_SOCKET 0x7fff
+#define QRTR_EPH_PORT_RANGE \
+		XA_LIMIT(QRTR_MIN_EPH_SOCKET, QRTR_MAX_EPH_SOCKET)
 
 #define QRTR_PORT_CTRL_LEGACY 0xffff
 
@@ -130,8 +132,9 @@ static LIST_HEAD(qrtr_all_epts);
 static DECLARE_RWSEM(qrtr_epts_lock);
 
 /* local port allocation management */
-static DEFINE_IDR(qrtr_ports);
+static DEFINE_XARRAY_ALLOC(qrtr_ports);
 static DEFINE_SPINLOCK(qrtr_port_lock);
+u32 qrtr_ports_next = QRTR_MIN_EPH_SOCKET;
 
 /* backup buffers */
 #define QRTR_BACKUP_HI_NUM	5
@@ -647,14 +650,23 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	int rc = -ENODEV;
 	int confirm_rx;
 
+	mutex_lock(&node->ep_lock);
 	if (!atomic_read(&node->hello_sent) && type != QRTR_TYPE_HELLO) {
 		kfree_skb(skb);
+		mutex_unlock(&node->ep_lock);
 		return rc;
 	}
+
 	if (atomic_read(&node->hello_sent) && type == QRTR_TYPE_HELLO) {
 		kfree_skb(skb);
+		mutex_unlock(&node->ep_lock);
 		return 0;
 	}
+
+	if (!atomic_read(&node->hello_sent) && type == QRTR_TYPE_HELLO)
+		atomic_inc(&node->hello_sent);
+
+	mutex_unlock(&node->ep_lock);
 
 	/* If sk is null, this is a forwarded packet and should not wait */
 	if (!skb->sk) {
@@ -688,6 +700,8 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	if (rc) {
 		pr_err("%s: failed to pad size %lu to %lu rc:%d\n", __func__,
 		       len, ALIGN(len, 4) + sizeof(*hdr), rc);
+		if (type == QRTR_TYPE_HELLO)
+			atomic_dec(&node->hello_sent);
 		return rc;
 	}
 
@@ -702,11 +716,10 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	 * confirm_rx flag if we dropped this one */
 	if (rc && confirm_rx)
 		qrtr_tx_flow_failed(node, to->sq_node, to->sq_port);
-	if (type == QRTR_TYPE_HELLO) {
-		if (!rc)
-			atomic_inc(&node->hello_sent);
-		else
-			kthread_queue_work(&node->kworker, &node->say_hello);
+
+	if (rc && type == QRTR_TYPE_HELLO) {
+		atomic_dec(&node->hello_sent);
+		kthread_queue_work(&node->kworker, &node->say_hello);
 	}
 
 	return rc;
@@ -1371,7 +1384,7 @@ static struct qrtr_sock *qrtr_port_lookup(int port)
 		port = 0;
 
 	spin_lock_irqsave(&qrtr_port_lock, flags);
-	ipc = idr_find(&qrtr_ports, port);
+	ipc = xa_load(&qrtr_ports, port);
 	if (ipc)
 		sock_hold(&ipc->sk);
 	spin_unlock_irqrestore(&qrtr_port_lock, flags);
@@ -1448,7 +1461,7 @@ static void qrtr_port_remove(struct qrtr_sock *ipc)
 	__sock_put(&ipc->sk);
 
 	spin_lock_irqsave(&qrtr_port_lock, flags);
-	idr_remove(&qrtr_ports, port);
+	xa_erase(&qrtr_ports, port);
 	spin_unlock_irqrestore(&qrtr_port_lock, flags);
 }
 
@@ -1467,25 +1480,21 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 	int rc;
 
 	if (!*port) {
-		rc = idr_alloc_cyclic(&qrtr_ports, ipc, QRTR_MIN_EPH_SOCKET,
-				      QRTR_MAX_EPH_SOCKET + 1, GFP_ATOMIC);
-		if (rc >= 0)
-			*port = rc;
+		rc = xa_alloc_cyclic(&qrtr_ports, port, ipc,
+				     QRTR_EPH_PORT_RANGE, &qrtr_ports_next,
+				     GFP_ATOMIC);
 	} else if (*port < QRTR_MIN_EPH_SOCKET &&
 		   !(capable(CAP_NET_ADMIN) ||
 		   in_egroup_p(AID_VENDOR_QRTR) ||
 		   in_egroup_p(GLOBAL_ROOT_GID))) {
 		rc = -EACCES;
 	} else if (*port == QRTR_PORT_CTRL) {
-		rc = idr_alloc(&qrtr_ports, ipc, 0, 1, GFP_ATOMIC);
+		rc = xa_insert(&qrtr_ports, 0, ipc, GFP_KERNEL);
 	} else {
-		rc = idr_alloc_cyclic(&qrtr_ports, ipc, *port, *port + 1,
-				      GFP_ATOMIC);
-		if (rc >= 0)
-			*port = rc;
+		rc = xa_insert(&qrtr_ports, *port, ipc, GFP_KERNEL);
 	}
 
-	if (rc == -ENOSPC)
+	if (rc == -EBUSY)
 		return -EADDRINUSE;
 	else if (rc < 0)
 		return rc;
@@ -1499,19 +1508,17 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 static void qrtr_reset_ports(void)
 {
 	struct qrtr_sock *ipc;
-	int id;
+	unsigned long index;
 
-	idr_for_each_entry(&qrtr_ports, ipc, id) {
-		/* Don't reset control port */
-		if (id == 0)
-			continue;
-
+	rcu_read_lock();
+	xa_for_each_start(&qrtr_ports, index, ipc, 1) {
 		sock_hold(&ipc->sk);
 		ipc->sk.sk_err = ENETRESET;
 		if (ipc->sk.sk_error_report)
 			ipc->sk.sk_error_report(&ipc->sk);
 		sock_put(&ipc->sk);
 	}
+	rcu_read_unlock();
 }
 
 /* Bind socket to address.
@@ -1542,18 +1549,6 @@ static int __qrtr_bind(struct socket *sock,
 	if (port == QRTR_PORT_CTRL)
 		qrtr_reset_ports();
 	spin_unlock_irqrestore(&qrtr_port_lock, flags);
-
-
-	if (port == QRTR_PORT_CTRL) {
-		struct qrtr_node *node;
-
-		down_write(&qrtr_epts_lock);
-		list_for_each_entry(node, &qrtr_all_epts, item) {
-			atomic_set(&node->hello_sent, 0);
-			atomic_set(&node->hello_rcvd, 0);
-		}
-		up_write(&qrtr_epts_lock);
-	}
 
 	/* unbind previous, if any */
 	if (!zapped)
@@ -2015,6 +2010,16 @@ static int qrtr_release(struct socket *sock)
 	lock_sock(sk);
 
 	ipc = qrtr_sk(sk);
+	if (ipc->us.sq_port == QRTR_PORT_CTRL) {
+		struct qrtr_node *node;
+
+		down_write(&qrtr_epts_lock);
+		list_for_each_entry(node, &qrtr_all_epts, item) {
+			atomic_set(&node->hello_sent, 0);
+			atomic_set(&node->hello_rcvd, 0);
+		}
+		up_write(&qrtr_epts_lock);
+	}
 	sk->sk_shutdown = SHUTDOWN_MASK;
 	if (!sock_flag(sk, SOCK_DEAD))
 		sk->sk_state_change(sk);
