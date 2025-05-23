@@ -67,3 +67,6 @@ qseecom-mod-$(CONFIG_COMPAT)	+= compat_qseecom.o
 obj-$(CONFIG_WIGIG_SENSING_SPI)	+= wigig_sensing.o
 obj-$(CONFIG_KINECTICS_XR_NORDIC) += kxrctrl/
 obj-$(CONFIG_SENSORS_TCS3490)	+= tcs3490.o
+
+cirrus_cs40l2x-objs = cs40l2x.o cs40l2x-tables.o
+obj-$(CONFIG_HAPTICS_CS40L2X)	+= cirrus_cs40l2x.o

@@ -518,6 +518,19 @@ config SENSORS_TCS3490
           ALS and color light sensors.
           This driver can also be build as module.
 
+config HAPTICS_CS40L2X
+	tristate "Cirrus Logic CS40L25 haptics driver"
+	depends on I2C && SYSFS && NEW_LEDS
+	help
+	  Boosted Haptics Driver with Integrated DSP and Waveform Memory
+	  with Closed Loop Algorithms and LRA Protection
+
+config HAPTICS_CS40L2X_INPUT
+	bool "Cirrus Logic CS40L25 Input Interface"
+	depends on HAPTICS_CS40L2X
+	help
+	  Use the input subsystem as an interface for cs40l25.
+
 source "drivers/misc/rtimd-i2c/Kconfig"
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
