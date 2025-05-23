@@ -8,3 +8,4 @@ obj-$(CONFIG_SMB1398_CHARGER)           += qcom-smb1398-charger.o
 qcom-smb1398-charger-y += smb1398-charger.o pmic-voter.o
 obj-$(CONFIG_SMB1355_SLAVE_CHARGER)	+= smb1355-charger.o pmic-voter.o
 obj-$(CONFIG_QPNP_SMBLITE)	        += step-chg-jeita.o battery.o qpnp-smblite.o smblite-lib.o pmic-voter.o storm-watch.o schgm-falshlite.o
+obj-$(CONFIG_SOMC_BATTERY_CHARGER)	+= somc_battchg_ext.o pmic-voter.o

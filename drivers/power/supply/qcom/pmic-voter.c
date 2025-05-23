@@ -47,6 +47,7 @@ struct votable {
 	struct dentry		*root;
 	struct dentry		*status_ent;
 	u32			force_val;
+	//unsigned long		force_val;
 	struct dentry		*force_val_ent;
 	bool			force_active;
 	struct dentry		*force_active_ent;
@@ -782,10 +783,10 @@ struct votable *create_votable(const char *name,
 		return ERR_PTR(-EEXIST);
 	}
 
-	votable->force_val_ent = debugfs_create_u32("force_val",
+	votable->force_val_ent = debugfs_create_ulong("force_val",
 					S_IFREG | 0644,
 					votable->root,
-					&(votable->force_val));
+					(unsigned long *) &(votable->force_val));
 
 	if (!votable->force_val_ent) {
 		pr_err("Couldn't create force_val dbg file for %s\n", name);
