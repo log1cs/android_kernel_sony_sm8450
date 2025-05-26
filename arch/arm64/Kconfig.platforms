@@ -419,4 +419,9 @@ config ARCH_ZYNQMP
 	help
 	  This enables support for Xilinx ZynqMP Family
 
+config MACH_SONY_DEVICE
+	bool "Sony Device Family"
+	help
+	  This enables support for Sony Device Family
+
 endmenu
