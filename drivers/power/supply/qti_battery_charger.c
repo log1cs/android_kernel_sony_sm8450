@@ -272,6 +272,7 @@ struct battery_chg_dev {
 	bool				initialized;
 	bool				notify_en;
 	bool				error_prop;
+	bool wireless_boost_enabled;
 };
 
 static const int battery_prop_map[BATT_PROP_MAX] = {
@@ -1919,6 +1920,8 @@ static ssize_t wireless_boost_en_store(struct class *c,
 	if (kstrtobool(buf, &val))
 		return -EINVAL;
 
+	bcdev->wireless_boost_enabled = val;
+
 	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_WLS],
 				WLS_BOOST_EN, val);
 	if (rc < 0)
@@ -1931,15 +1934,9 @@ static ssize_t wireless_boost_en_show(struct class *c,
 					struct class_attribute *attr, char *buf)
 {
 	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
-						battery_class);
-	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_WLS];
-	int rc;
+                                            battery_class);
 
-	rc = read_property_id(bcdev, pst, WLS_BOOST_EN);
-	if (rc < 0)
-		return rc;
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", pst->prop[WLS_BOOST_EN]);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", bcdev->wireless_boost_enabled);
 }
 static CLASS_ATTR_RW(wireless_boost_en);
 
